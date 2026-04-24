@@ -1,0 +1,21 @@
+.env
+.env.*
+!.env.example
+
+information_security/
+information_security_windows_backup/
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+*.db
+*.db.backup
+instance/*.db
+
+spam_debug.log
+
+.DS_Store
+
+# Large local model artifact (exceeds GitHub file limit)
+sentiment_analysis/model.safetensors

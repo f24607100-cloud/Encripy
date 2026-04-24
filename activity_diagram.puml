@@ -1,0 +1,253 @@
+@startuml SecureChatActivityDiagram
+
+!theme plain
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam rectangle {
+  BorderColor #333
+  BackgroundColor #f9f9f9
+}
+
+title Secure End-to-End Encrypted Chat - Activity Diagram
+note right: University Project Demonstrating Cryptographic Security Concepts
+
+partition "User Registration Flow" {
+  :User: --> (Visit Registration Page)
+  (Visit Registration Page) --> (Enter Username, Email, Password)
+  (Enter Username, Email, Password) --> (Validate Input)
+  
+  if (Input Valid?) then (yes)
+    (Validate Input) --> (Generate OTP)
+    note right: One-Time Password via Email
+    (Generate OTP) --> (Store Temp User Data)
+    (Store Temp User Data) --> (Send Verification Email)
+    (Send Verification Email) --> (Show OTP Verification Page)
+  else (no)
+    (Validate Input) --> (Show Error Message)
+    (Show Error Message) --> (Enter Username, Email, Password)
+  endif
+  
+  (Show OTP Verification Page) --> (Enter OTP)
+  (Enter OTP) --> (Verify OTP)
+  
+  if (OTP Valid?) then (yes)
+    (Verify OTP) --> (Hash Password with bcrypt)
+    note right: 12 rounds, salted
+    (Hash Password with bcrypt) --> (Generate DH Key Pair)
+    note right: 2048-bit MODP Group
+    (Generate DH Key Pair) --> (Create User Record)
+    (Create User Record) --> (Show Success Message)
+    (Show Success Message) --> (Redirect to Login)
+  else (no)
+    (Verify OTP) --> (Show Invalid OTP Error)
+    (Show Invalid OTP Error) --> (Enter OTP)
+  endif
+}
+
+partition "User Authentication Flow" {
+  :User: --> (Visit Login Page)
+  (Visit Login Page) --> (Enter Username, Password)
+  (Enter Username, Password) --> (Check Rate Limiting)
+  
+  if (Account Locked?) then (yes)
+    (Check Rate Limiting) --> (Show Lockout Message)
+    note right: 5 failed attempts = 60s lockout
+    (Show Lockout Message) --> (Wait for Lockout Expiry)
+    (Wait for Lockout Expiry) --> (Enter Username, Password)
+  else (no)
+    (Check Rate Limiting) --> (Verify Credentials)
+    (Verify Credentials) --> (Hash Input Password)
+    (Hash Input Password) --> (Compare with Stored Hash)
+    
+    if (Password Match?) then (yes)
+      (Compare with Stored Hash) --> (Create Session)
+      note right: HttpOnly, SameSite=Lax
+      (Create Session) --> (Log Successful Attempt)
+      (Log Successful Attempt) --> (Redirect to Chat List)
+    else (no)
+      (Compare with Stored Hash) --> (Log Failed Attempt)
+      (Log Failed Attempt) --> (Show Invalid Credentials)
+      (Show Invalid Credentials) --> (Enter Username, Password)
+    endif
+  endif
+}
+
+partition "Chat Initialization Flow" {
+  :User: --> (Select Chat Partner)
+  (Select Chat Partner) --> (Verify Friendship Status)
+  
+  if (Users are Friends?) then (yes)
+    (Verify Friendship Status) --> (Fetch User DH Keys)
+    (Fetch User DH Keys) --> (Compute Shared Secret)
+    note right: Diffie-Hellman Key Exchange
+    (Compute Shared Secret) --> (Derive AES Key with HKDF)
+    (Derive AES Key with HKDF) --> (Cache Shared Key in Session)
+    (Cache Shared Key in Session) --> (Load Chat Interface)
+    (Load Chat Interface) --> (Start Message Polling)
+    note right: AJAX every 2 seconds
+  else (no)
+    (Verify Friendship Status) --> (Show Friendship Required Error)
+    (Show Friendship Required Error) --> (Return to Chat List)
+  endif
+}
+
+partition "Send Message Flow" {
+  :User: --> (Type Message)
+  (Type Message) --> (Click Send)
+  (Click Send) --> (Validate Message)
+  
+  if (Message Not Empty?) then (yes)
+    (Validate Message) --> (Perform Spam Detection)
+    note right: Text & Image Analysis
+    (Perform Spam Detection) --> (Perform Sentiment Analysis)
+    note right: Positive/Neutral/Negative
+    (Perform Sentiment Analysis) --> (Retrieve Shared Key)
+    (Retrieve Shared Key) --> (Generate Random IV)
+    note right: 16 bytes
+    (Generate Random IV) --> (Encrypt with AES-256 CBC)
+    (Encrypt with AES-256 CBC) --> (Apply PKCS#7 Padding)
+    (Apply PKCS#7 Padding) --> (Compute HMAC-SHA256)
+    note right: Over IV + Ciphertext
+    (Compute HMAC-SHA256) --> (Store Encrypted Message)
+    note right: Base64 encoded in database
+    (Store Encrypted Message) --> (Return Success Response)
+    (Return Success Response) --> (Refresh Message List)
+  else (no)
+    (Validate Message) --> (Show Empty Message Error)
+    (Show Empty Message Error) --> (Type Message)
+  endif
+}
+
+partition "Receive Messages Flow" {
+  :Frontend: --> (Poll for Messages)
+  note right: Every 2 seconds
+  (Poll for Messages) --> (Fetch Messages from Database)
+  (Fetch Messages from Database) --> (Delete Expired Messages)
+  note right: TTL-based cleanup
+  (Delete Expired Messages) --> (For Each Message)
+  
+  (For Each Message) --> (Decode Base64 Components)
+  (Decode Base64 Components) --> (Verify HMAC)
+  
+  if (HMAC Valid?) then (yes)
+    (Verify HMAC) --> (Decrypt with AES-256 CBC)
+    (Decrypt with AES-256 CBC) --> (Remove PKCS#7 Padding)
+    (Remove PKCS#7 Padding) --> (Return Plaintext)
+    (Return Plaintext) --> (Update Chat Interface)
+  else (no)
+    (Verify HMAC) --> (Show Tampered Message Warning)
+    (Show Tampered Message Warning) --> (Update Chat Interface)
+  endif
+  
+  (Update Chat Interface) --> (Continue Polling)
+}
+
+partition "Friendship Management Flow" {
+  :User: --> (Search for Users)
+  (Search for Users) --> (Display Search Results)
+  (Display Search Results) --> (Send Friend Request)
+  (Send Friend Request) --> (Create Friendship Record)
+  note right: Status = "pending"
+  (Create Friendship Record) --> (Notify Recipient)
+  
+  :Recipient: --> (View Friend Requests)
+  (View Friend Requests) --> (Accept or Reject Request)
+  
+  if (Accept Request?) then (yes)
+    (Accept or Reject Request) --> (Update Friendship Status)
+    note right: Status = "accepted"
+    (Update Friendship Status) --> (Enable Chat Between Users)
+  else (no)
+    (Accept or Reject Request) --> (Delete Friendship Record)
+    (Delete Friendship Record) --> (Remove Request from List)
+  endif
+}
+
+partition "Security Features Flow" {
+  partition "Brute Force Lab" {
+    :User: --> (Access Brute Force Lab)
+    (Access Brute Force Lab) --> (Choose Attack Type)
+    
+    if (Password Attack?) then (yes)
+      (Choose Attack Type) --> (Provide bcrypt Hash)
+      (Provide bcrypt Hash) --> (Upload Dictionary)
+      (Upload Dictionary) --> (Test Each Password)
+      (Test Each Password) --> (Log Attempt & Duration)
+      (Log Attempt & Duration) --> (Show Results)
+    else (no)
+      if (AES Key Attack?) then (yes)
+        (Choose Attack Type) --> (Select Key Size)
+        note right: 4-24 bits for demo
+        (Select Key Size) --> (Encrypt Test Message)
+        (Encrypt Test Message) --> (Brute Force All Keys)
+        (Brute Force All Keys) --> (Log Attempts & Time)
+        (Log Attempts & Time) --> (Show Results)
+      endif
+    endif
+  }
+  
+  partition "Admin Monitoring" {
+    :Admin: --> (Access Admin Dashboard)
+    (Access Admin Dashboard) --> (View Login Attempts)
+    (View Login Attempts) --> (View Brute Force Logs)
+    (View Brute Force Logs) --> (Monitor Security Events)
+  }
+}
+
+partition "Additional Features Flow" {
+  partition "Stories Feature" {
+    :User: --> (Upload Story Image)
+    (Upload Story Image) --> (Add Caption)
+    (Add Caption) --> (Set 24hr Expiry)
+    (Set 24hr Expiry) --> (Store Story)
+    
+    :Friend: --> (View Active Stories)
+    (View Active Stories) --> (Reply to Story)
+    (Reply to Story) --> (Send as Encrypted Message)
+  }
+  
+  partition "Social Feed" {
+    :User: --> (Create Feed Post)
+    (Create Feed Post) --> (View Feed Posts)
+    (View Feed Posts) --> (Like Posts)
+    (Like Posts) --> (Comment on Posts)
+  }
+  
+  partition "AI Assistant" {
+    :User: --> (Access AI Assistant)
+    (Access AI Assistant) --> (Send Query)
+    (Send Query) --> (Call OpenAI API)
+    (Call OpenAI API) --> (Display Response)
+  }
+  
+  partition "E-Commerce Store" {
+    :User: --> (Browse GentsStyling Store)
+    (Browse GentsStyling Store) --> (View Products)
+    (View Products) --> (Add to Cart)
+    (Add to Cart) --> (Checkout)
+    (Checkout) --> (Process Order)
+  }
+  
+  partition "Steganography Lab" {
+    :User: --> (Upload Image)
+    (Upload Image) --> (Encode/Decode Message)
+    (Encode/Decode Message) --> (Process with LSB)
+    note right: Least Significant Bit
+    (Process with LSB) --> (Download Result)
+  }
+}
+
+note bottom
+  **Security Implementation Summary:**
+  • AES-256 CBC encryption for all messages
+  • HMAC-SHA256 for integrity verification
+  • Diffie-Hellman 2048-bit key exchange
+  • bcrypt password hashing (12 rounds)
+  • Rate limiting and audit logging
+  • End-to-end encryption (no plaintext storage)
+  • Session-based authentication with HttpOnly cookies
+  • CSRF protection via SameSite=Lax
+end note
+
+@enduml

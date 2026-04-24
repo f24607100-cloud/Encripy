@@ -1,0 +1,21 @@
+TestCaseID,Feature,TestScenario,TestSteps,ExpectedResult,Priority
+TC001,User Authentication,Register New User,1. Navigate to /register. 2. Enter valid username, email, password. 3. Submit form. 4. Enter OTP from email.,User created successfully giving success message and redirected to login page.,High
+TC002,User Authentication,Login User,1. Navigate to /login. 2. Enter valid credentials. 3. Submit form.,Login successful giving success message and redirected to /chat.,High
+TC003,User Authentication,Login Lockout,1. Attempt login with invalid password multiple times (exceed threshold).,Account locked out for specified duration with error message.,Medium
+TC004,User Authentication,Forgot Password,1. Navigate to /forgot_password. 2. Enter registered email. 3. Submit.,OTP sent to email. Redirect to verify OTP page.,Medium
+TC005,User Authentication,Reset Password,1. Enter valid OTP on verify page. 2. Enter new password and confirm. 3. Submit.,Password updated successfully. Redirect to login.,High
+TC006,Profile Management,Update Profile,1. navigate to /profile. 2. Change bio and upload new picture. 3. Submit.,Profile updated successfully with success message.,Low
+TC007,Friendship,Search User,1. Navigate to /friends/search. 2. Enter part of existing username. 3. Verify results excluding self/friends.,List of matching users displayed.,Medium
+TC008,Friendship,Send Friend Request,1. Click 'Add Friend' on search result.,Request sent message displayed. Status becomes pending.,High
+TC009,Friendship,Accept Friend Request,1. User B logs in. 2. Navigate to /chat (Chat List). 3. Click 'Accept' on pending request.,Friend added to contact list. Status becomes accepted.,High
+TC010,Chat,Send Text Message,1. Navigate to chat with Friend. 2. Type message. 3. Click Send.,Message appears in chat window. Status 'sent' returned.,High
+TC011,Chat,Send Image Message (Spam Check),1. Send message starting with '[IMAGE]:' followed by base64 spam image data.,System detects spam. Message flagged as spam or rejected.,Medium
+TC012,Chat,Sentiment Analysis,1. Send message with positive/negative text.,Message stored with correct sentiment label (positive/negative/neutral).,Low
+TC013,Chat,Receive Message,1. User B views chat with User A. 2. Verify new message appears.,Message decrypted and displayed correctly.,High
+TC014,Chat,Message TTL,1. Sender sets TTL to 10 seconds. 2. Send message. 3. Wait 15 seconds. 4. Refresh chat.,Message should disappear/be deleted from view.,Medium
+TC015,Feed,Create Feed Post,1. Navigate to /feed. 2. Enter content. 3. Click Post.,New post appears at top of feed.,High
+TC016,Feed,Like Feed Post,1. Click Like button on a feed post.,Like count increments. Button indicates 'Liked' state.,Medium
+TC017,Feed,Comment on Post,1. Enter comment on a post. 2. Submit.,Comment appears below the post.,Medium
+TC018,Stories,Add Story,1. Navigate to /stories. 2. Upload image and add caption. 3. Submit.,Story appears in active stories list for 24 hours.,Medium
+TC019,Stories,Reply to Story,1. View friend's story. 2. Enter reply message. 3. Submit.,Reply sent as a direct message to the story owner.,Low
+TC020,AI Assistant,Chat with AI,1. Navigate to /ai_assistant. 2. Type question. 3. Send.,AI responds with relevant answer.,Low

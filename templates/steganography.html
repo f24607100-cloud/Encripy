@@ -1,0 +1,163 @@
+{% extends "base_new.html" %}
+
+{% block title %}Steganography Lab - Encripy{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-8">
+    <!-- Header -->
+    <div class="text-center space-y-2">
+        <h1 class="text-4xl font-bold text-gray-900 dark:text-white font-heading">Steganography Lab</h1>
+        <p class="text-gray-500 dark:text-gray-400 text-lg">Hide secret messages inside innocent-looking images.</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Encode Card -->
+        <div
+            class="bg-white dark:bg-gray-800 rounded-3xl shadow-xl shadow-blue-100/50 dark:shadow-none border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <div class="bg-primary px-8 py-4 flex items-center gap-3">
+                <span class="material-symbols-outlined text-white text-2xl">lock</span>
+                <h2 class="text-xl font-bold text-white font-heading">Hide Message (Encode)</h2>
+            </div>
+            <div class="p-8">
+                <form action="{{ url_for('steganography') }}" method="post" enctype="multipart/form-data"
+                    class="space-y-6">
+                    <input type="hidden" name="action" value="encode">
+
+                    <div class="space-y-2">
+                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">1. Upload Source
+                            Image</label>
+                        <div class="relative group h-24">
+                            <input type="file" name="image" accept="image/*" required
+                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                            <div
+                                class="absolute inset-0 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 group-hover:border-primary group-hover:bg-primary/5 transition-all">
+                                <span
+                                    class="material-symbols-outlined text-gray-400 group-hover:text-primary mb-1">image</span>
+                                <span class="text-sm text-gray-500 group-hover:text-primary font-medium"
+                                    id="encode-file-name">Drop image or click to browse</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">2. Enter Secret
+                            Message</label>
+                        <textarea name="message" rows="4" required
+                            class="block w-full rounded-2xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 focus:ring-primary focus:border-primary transition-all p-4"
+                            placeholder="Write the secret message you want to hide..."></textarea>
+                    </div>
+
+                    <button type="submit"
+                        class="w-full bg-primary hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-2xl shadow-lg shadow-primary/25 transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5">
+                        <span class="material-symbols-outlined">auto_fix_high</span>
+                        Embed & Download
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Decode Card -->
+        <div
+            class="bg-white dark:bg-gray-800 rounded-3xl shadow-xl shadow-green-100/50 dark:shadow-none border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <div class="bg-emerald-500 px-8 py-4 flex items-center gap-3">
+                <span class="material-symbols-outlined text-white text-2xl">lock_open</span>
+                <h2 class="text-xl font-bold text-white font-heading">Reveal Message (Decode)</h2>
+            </div>
+            <div class="p-8">
+                <form action="{{ url_for('steganography') }}" method="post" enctype="multipart/form-data"
+                    class="space-y-6">
+                    <input type="hidden" name="action" value="decode">
+
+                    <div class="space-y-2">
+                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">1. Upload Stego
+                            Image</label>
+                        <div class="relative group h-24">
+                            <input type="file" name="image" accept="image/*" required
+                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                            <div
+                                class="absolute inset-0 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 group-hover:border-emerald-500 group-hover:bg-emerald-500/5 transition-all">
+                                <span
+                                    class="material-symbols-outlined text-gray-400 group-hover:text-emerald-500 mb-1">upload_file</span>
+                                <span class="text-sm text-gray-500 group-hover:text-emerald-500 font-medium"
+                                    id="decode-file-name">Select image with hidden message</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit"
+                        class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 px-6 rounded-2xl shadow-lg shadow-emerald-500/25 transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5">
+                        <span class="material-symbols-outlined">search</span>
+                        Scan Image
+                    </button>
+
+                    {% if decoded_message %}
+                    <div
+                        class="bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 p-6 rounded-2xl space-y-3 animate-bounce-subtle">
+                        <div class="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold">
+                            <span class="material-symbols-outlined">verified</span>
+                            Secret Found!
+                        </div>
+                        <div
+                            class="bg-white dark:bg-gray-900 p-4 rounded-xl border border-emerald-100 dark:border-emerald-800">
+                            <p class="text-gray-900 dark:text-white font-mono break-all">{{ decoded_message }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- How it works -->
+    <div
+        class="bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 p-8 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm relative overflow-hidden group">
+        <div class="absolute right-0 top-0 opacity-5 -mr-8 -mt-8 transition-transform group-hover:scale-110">
+            <span class="material-symbols-outlined text-[160px]">info</span>
+        </div>
+        <div class="relative z-10">
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">analytics</span>
+                How does it work?
+            </h3>
+            <p class="text-gray-600 dark:text-gray-400 leading-relaxed max-w-4xl">
+                This tool uses <strong class="text-gray-900 dark:text-white">Least Significant Bit (LSB)</strong>
+                steganography.
+                It converts your text into binary (0s and 1s) and hides these bits in the smallest color value of each
+                pixel in the image.
+                The change is so extremely subtle that the human eye cannot detect any difference in the image colors,
+                even under magnification.
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+    // File upload preview text
+    document.querySelectorAll('input[type="file"]').forEach(input => {
+        input.addEventListener('change', function (e) {
+            const fileName = e.target.files[0] ? e.target.files[0].name : "Select image...";
+            const targetId = e.target.name === 'image' && e.target.closest('form').querySelector('input[name="action"]').value === 'encode'
+                ? 'encode-file-name' : 'decode-file-name';
+            document.getElementById(targetId).textContent = fileName;
+        });
+    });
+</script>
+
+<style>
+    @keyframes bounce-subtle {
+
+        0%,
+        100% {
+            transform: translateY(0);
+        }
+
+        50% {
+            transform: translateY(-4px);
+        }
+    }
+
+    .animate-bounce-subtle {
+        animation: bounce-subtle 2s infinite ease-in-out;
+    }
+</style>
+{% endblock %}

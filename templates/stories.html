@@ -1,0 +1,234 @@
+{% extends "base_new.html" %}
+
+{% block title %}Stories - Encripy{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-8 px-4">
+    <div class="flex items-center justify-between mb-8">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white font-heading">Stories</h1>
+        <button onclick="document.getElementById('upload-modal').classList.remove('hidden')"
+            class="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-full flex items-center gap-2 transition-transform hover:scale-105 shadow-lg shadow-pink-500/25">
+            <span class="material-symbols-outlined">add_circle</span>
+            Add Story
+        </button>
+    </div>
+
+    <!-- Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div
+        class="mb-6 p-4 rounded-xl border {% if category == 'success' %}bg-green-50 border-green-200 text-green-700{% else %}bg-red-50 border-red-200 text-red-700{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <!-- Stories Grid -->
+    {% if stories %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for story in stories %}
+        <div class="relative group rounded-2xl overflow-hidden aspect-[9/16] shadow-xl bg-gray-900 cursor-pointer transition-transform hover:scale-[1.02]"
+            onclick="openStory('{{ url_for('static', filename='uploads/' + story.content_filename) }}', '{{ story.user.username|e }}', {{ (story.caption or '')|tojson }}, '{{ story.id }}', {{ (story.user_id == current_user.id)|tojson }})">
+            <img src="{{ url_for('static', filename='uploads/' + story.content_filename) }}"
+                alt="Story by {{ story.user.username }}"
+                class="w-full h-full object-cover opacity-90 transition-opacity group-hover:opacity-100">
+
+            <div
+                class="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/60 opacity-100 transition-opacity">
+                <!-- Header -->
+                <div class="absolute top-0 left-0 right-0 p-4 flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full border-2 border-pink-500 p-0.5 bg-black">
+                        {% if story.user.profile_picture %}
+                        <img src="{{ url_for('static', filename='uploads/' + story.user.profile_picture) }}"
+                            class="w-full h-full rounded-full object-cover">
+                        {% else %}
+                        <div
+                            class="w-full h-full rounded-full bg-primary/20 flex items-center justify-center text-[10px] text-white font-bold">
+                            {{ story.user.username[:2] }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-white text-sm font-semibold shadow-black drop-shadow-md">{{
+                            story.user.username }}</span>
+                        <span class="text-gray-300 text-xs">{{ story.created_at.strftime('%H:%M') }}</span>
+                    </div>
+                </div>
+
+                <!-- Caption -->
+                {% if story.caption %}
+                <div class="absolute bottom-14 left-0 right-0 p-4">
+                    <p class="text-white text-sm bg-black/40 backdrop-blur-sm p-2 rounded-lg inline-block">
+                        {{ story.caption }}
+                    </p>
+                </div>
+                {% endif %}
+
+                <!-- Quick Reply Overlay -->
+                {% if story.user_id != current_user.id %}
+                <div
+                    class="absolute bottom-4 left-4 right-4 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all">
+                    <div
+                        class="w-full bg-white/20 backdrop-blur-md text-white py-2 rounded-full text-center text-xs font-bold flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined text-[16px]">reply</span>
+                        Reply
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div
+        class="text-center py-20 bg-white dark:bg-gray-800 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-pink-100 text-pink-500 mb-4">
+            <span class="material-symbols-outlined text-3xl">amp_stories</span>
+        </div>
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white">No stories yet</h3>
+        <p class="text-gray-500 mt-1">Share a photo with your contacts to get started!</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Upload Modal -->
+<div id="upload-modal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
+        onclick="this.parentElement.classList.add('hidden')"></div>
+
+    <div class="fixed inset-0 z-10 overflow-y-auto">
+        <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <div
+                class="relative transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+                <form action="{{ url_for('add_story') }}" method="POST" enctype="multipart/form-data">
+                    <div class="px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                        <h3 class="text-xl font-semibold leading-6 text-gray-900 dark:text-white mb-4" id="modal-title">
+                            Add to Story</h3>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label
+                                    class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Photo</label>
+                                <input type="file" name="story_image" accept="image/*" required class="block w-full text-sm text-gray-500
+                              file:mr-4 file:py-2 file:px-4
+                              file:rounded-full file:border-0
+                              file:text-sm file:font-semibold
+                              file:bg-pink-50 file:text-pink-700
+                              hover:file:bg-pink-100">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Caption
+                                    (Optional)</label>
+                                <input type="text" name="caption" maxlength="200"
+                                    class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 p-2.5 focus:ring-pink-500 focus:border-pink-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 dark:bg-gray-700/50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                        <button type="submit"
+                            class="inline-flex w-full justify-center rounded-lg bg-pink-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-pink-500 sm:ml-3 sm:w-auto">Share</button>
+                        <button type="button" onclick="document.getElementById('upload-modal').classList.add('hidden')"
+                            class="mt-3 inline-flex w-full justify-center rounded-lg bg-white dark:bg-gray-800 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-white ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 sm:mt-0 sm:w-auto">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Full-screen Story Viewer -->
+<div id="story-viewer"
+    class="fixed inset-0 z-[60] hidden flex items-center justify-center bg-black/95 transition-all p-4">
+    <button onclick="closeStory()"
+        class="absolute top-6 right-6 text-white/70 hover:text-white transition-colors z-[70]">
+        <span class="material-symbols-outlined text-4xl">close</span>
+    </button>
+
+    <div
+        class="relative w-full max-w-lg max-h-[90vh] aspect-[9/16] bg-gray-900 shadow-2xl overflow-hidden rounded-3xl flex flex-col">
+        <!-- Image -->
+        <img id="viewer-img" src="" class="w-full grow object-contain bg-black">
+
+        <!-- Info Overlay -->
+        <div class="absolute top-0 left-0 right-0 p-6 bg-gradient-to-b from-black/90 to-transparent">
+            <div class="flex items-center gap-3">
+                <div id="viewer-avatar"
+                    class="w-10 h-10 rounded-full border-2 border-pink-500 p-0.5 bg-black overflow-hidden flex items-center justify-center text-white font-bold uppercase text-sm">
+                </div>
+                <div class="flex flex-col">
+                    <span id="viewer-username" class="text-white font-bold leading-tight"></span>
+                    <span class="text-white/60 text-xs">Story</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Controls & Reply -->
+        <div class="p-6 bg-gradient-to-t from-black/90 via-black/40 to-transparent space-y-4">
+            <p id="viewer-caption" class="text-white text-center italic text-sm"></p>
+
+            <form id="reply-form" action="{{ url_for('reply_story') }}" method="POST" class="relative group">
+                <input type="hidden" name="story_id" id="viewer-story-id">
+                <input type="text" name="message" required autocomplete="off"
+                    class="w-full bg-white/10 backdrop-blur-md border border-white/20 rounded-full py-3 px-6 pr-14 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-pink-500 transition-all font-medium text-sm"
+                    placeholder="Reply to story...">
+                <button type="submit"
+                    class="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-pink-500 text-white rounded-full flex items-center justify-center hover:bg-pink-400 transition-all shadow-lg shadow-pink-500/20">
+                    <span class="material-symbols-outlined text-xl">send</span>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openStory(imgSrc, username, caption, storyId, isOwnStory) {
+        const viewer = document.getElementById('story-viewer');
+        const viewerImg = document.getElementById('viewer-img');
+        const viewerUsername = document.getElementById('viewer-username');
+        const viewerCaption = document.getElementById('viewer-caption');
+        const viewerStoryId = document.getElementById('viewer-story-id');
+        const viewerAvatar = document.getElementById('viewer-avatar');
+        const replyForm = document.getElementById('reply-form');
+
+        viewerImg.src = imgSrc;
+        viewerUsername.textContent = username;
+        viewerCaption.textContent = caption ? `"${caption}"` : "";
+        viewerStoryId.value = storyId;
+        viewerAvatar.textContent = username.substring(0, 2);
+
+        // Hide reply form for own stories
+        if (isOwnStory) {
+            replyForm.classList.add('hidden');
+        } else {
+            replyForm.classList.remove('hidden');
+        }
+
+        viewer.classList.remove('hidden');
+        viewer.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+
+        // Auto-focus reply input
+        if (!isOwnStory) {
+            setTimeout(() => {
+                document.querySelector('#reply-form input[name="message"]').focus();
+            }, 300);
+        }
+    }
+
+    function closeStory() {
+        const viewer = document.getElementById('story-viewer');
+        viewer.classList.add('hidden');
+        viewer.classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    // Close viewer on Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeStory();
+    });
+</script>
+{% endblock %}

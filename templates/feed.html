@@ -1,0 +1,284 @@
+{% extends "base_new.html" %}
+
+{% block title %}Feed - Encripy{% endblock %}
+
+{% block content %}
+<div class="container mx-auto max-w-2xl">
+    <header
+        class="mb-6 sticky top-0 bg-background-light dark:bg-background-dark z-10 py-4 border-b border-gray-200 dark:border-gray-800">
+        <h1 class="text-2xl font-bold font-heading text-gray-900 dark:text-white">Feed</h1>
+    </header>
+
+    <!-- Create Post Section -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4 mb-6 border border-gray-100 dark:border-gray-700">
+        <div class="flex gap-4">
+            {% if current_user.profile_picture %}
+            <img src="{{ url_for('static', filename='uploads/' + current_user.profile_picture) }}"
+                class="w-10 h-10 rounded-full object-cover">
+            {% else %}
+            <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
+                {{ current_user.username[:2] }}
+            </div>
+            {% endif %}
+            <div class="flex-1">
+                <textarea id="postContent" rows="2" placeholder="What's happening?"
+                    class="w-full bg-transparent border-none focus:ring-0 text-lg text-gray-900 dark:text-white resize-none placeholder-gray-400 dark:placeholder-gray-500"></textarea>
+                <div class="flex justify-between items-center mt-2 border-t border-gray-100 dark:border-gray-700 pt-2">
+                    <div class="flex text-primary">
+                        <!-- Future: Add image/poll buttons here -->
+                    </div>
+                    <button onclick="createPost()"
+                        class="bg-primary hover:bg-blue-600 text-white px-4 py-1.5 rounded-full font-bold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        id="postButton">
+                        Post
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feed Stream -->
+    <div id="feedStream" class="space-y-4 pb-20">
+        <!-- Posts will be injected here -->
+        <div class="text-center py-8">
+            <div class="animate-spin inline-block w-8 h-8 border-4 border-primary border-t-transparent rounded-full">
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        loadPosts();
+    });
+
+    // Auto-resize textarea
+    const textarea = document.getElementById('postContent');
+    textarea.addEventListener('input', function () {
+        this.style.height = 'auto';
+        this.style.height = (this.scrollHeight) + 'px';
+        document.getElementById('postButton').disabled = this.value.trim().length === 0;
+    });
+
+    function loadPosts() {
+        fetch('/api/feed/posts')
+            .then(res => res.json())
+            .then(posts => {
+                const stream = document.getElementById('feedStream');
+                if (posts.length === 0) {
+                    stream.innerHTML = `
+                        <div class="text-center py-10 text-gray-500">
+                            <span class="material-symbols-outlined text-4xl mb-2">rss_feed</span>
+                            <p>No posts yet. Be the first to post!</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                stream.innerHTML = posts.map(post => renderPost(post)).join('');
+            });
+    }
+
+    function renderPost(post) {
+        return `
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4 border border-gray-100 dark:border-gray-700 transition-all hover:bg-gray-50 dark:hover:bg-gray-750">
+                <div class="flex gap-3">
+                    <div class="flex-shrink-0">
+                        ${post.user.profile_picture ?
+                `<img src="/static/uploads/${post.user.profile_picture}" class="w-10 h-10 rounded-full object-cover">` :
+                `<div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">${post.user.username.substring(0, 2)}</div>`
+            }
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="font-bold text-gray-900 dark:text-white hover:underline cursor-pointer">${post.user.username}</span>
+                                <span class="text-gray-500 text-sm ml-1">· ${formatTime(post.created_at)}</span>
+                            </div>
+                        </div>
+                        <p class="mt-1 text-gray-900 dark:text-gray-100 whitespace-pre-wrap text-[15px] leading-relaxed">${escapeHtml(post.content)}</p>
+                        
+                        <!-- Interactions -->
+                        <div class="flex items-center justify-between mt-3 max-w-md text-gray-500">
+                            <button onclick="toggleLike(${post.id}, this)" class="flex items-center gap-2 group transition-colors ${post.is_liked ? 'text-pink-500' : 'hover:text-pink-500'}">
+                                <span class="material-symbols-outlined text-[20px] group-hover:bg-pink-500/10 rounded-full p-1 transition-colors ${post.is_liked ? 'fill-current' : ''}">favorite</span>
+                                <span class="text-xs group-hover:text-pink-500 num-likes">${post.likes_count || ''}</span>
+                            </button>
+                            
+                            <button onclick="toggleComments(${post.id})" class="flex items-center gap-2 group hover:text-blue-500 transition-colors">
+                                <span class="material-symbols-outlined text-[20px] group-hover:bg-blue-500/10 rounded-full p-1 transition-colors">chat_bubble</span>
+                                <span class="text-xs group-hover:text-blue-500 num-comments">${post.comments_count || ''}</span>
+                            </button>
+                            
+                            <button class="flex items-center gap-2 group hover:text-green-500 transition-colors">
+                                <span class="material-symbols-outlined text-[20px] group-hover:bg-green-500/10 rounded-full p-1 transition-colors">share</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Comments Section (Hidden by default) -->
+                        <div id="comments-${post.id}" class="hidden mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                             <div class="comment-list space-y-3 mb-3">
+                                ${post.comments.map(comment => renderComment(comment)).join('')}
+                             </div>
+                             <div class="flex gap-2">
+                                <input type="text" 
+                                       id="comment-input-${post.id}"
+                                       placeholder="Write a comment..." 
+                                       class="flex-1 bg-gray-100 dark:bg-gray-900 border-none rounded-full px-4 py-2 text-sm focus:ring-1 focus:ring-primary"
+                                       onkeypress="handleCommentKeypress(event, ${post.id})">
+                                <button onclick="postComment(${post.id})" class="text-primary disabled:opacity-50">
+                                    <span class="material-symbols-outlined">send</span>
+                                </button>
+                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderComment(comment) {
+        return `
+            <div class="flex gap-2 text-sm">
+                <span class="font-bold text-gray-900 dark:text-white">${comment.user}</span>
+                <p class="text-gray-700 dark:text-gray-300 flex-1">${escapeHtml(comment.content)}</p>
+            </div>
+        `;
+    }
+
+    function createPost() {
+        const content = document.getElementById('postContent').value.trim();
+        if (!content) return;
+
+        const btn = document.getElementById('postButton');
+        btn.disabled = true;
+        btn.innerHTML = '<div class="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>';
+
+        fetch('/api/feed/posts', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ content })
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('postContent').value = '';
+                    document.getElementById('postContent').style.height = 'auto';
+                    loadPosts(); // Reload feed
+                } else {
+                    alert('Error creating post');
+                }
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.textContent = 'Post';
+            });
+    }
+
+    function toggleLike(postId, btn) {
+        const icon = btn.querySelector('.material-symbols-outlined');
+        const countSpan = btn.querySelector('.num-likes');
+
+        // Optimistic update
+        const isLiked = btn.classList.contains('text-pink-500');
+        if (isLiked) {
+            btn.classList.remove('text-pink-500');
+            btn.classList.add('hover:text-pink-500');
+            icon.classList.remove('fill-current');
+            let count = parseInt(countSpan.textContent) || 0;
+            countSpan.textContent = count > 1 ? count - 1 : '';
+        } else {
+            btn.classList.add('text-pink-500');
+            btn.classList.remove('hover:text-pink-500');
+            icon.classList.add('fill-current');
+            let count = parseInt(countSpan.textContent) || 0;
+            countSpan.textContent = count + 1;
+        }
+
+        fetch(`/api/feed/posts/${postId}/like`, { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Sync with server count just in case
+                    countSpan.textContent = data.likes_count || '';
+                }
+            });
+    }
+
+    function toggleComments(postId) {
+        const section = document.getElementById(`comments-${postId}`);
+        section.classList.toggle('hidden');
+        if (!section.classList.contains('hidden')) {
+            setTimeout(() => document.getElementById(`comment-input-${postId}`).focus(), 100);
+        }
+    }
+
+    function handleCommentKeypress(e, postId) {
+        if (e.key === 'Enter') {
+            postComment(postId);
+        }
+    }
+
+    function postComment(postId) {
+        const input = document.getElementById(`comment-input-${postId}`);
+        const content = input.value.trim();
+        if (!content) return;
+
+        input.disabled = true;
+
+        fetch(`/api/feed/posts/${postId}/comment`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content })
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    input.value = '';
+                    // Append new comment
+                    const list = document.querySelector(`#comments-${postId} .comment-list`);
+                    list.insertAdjacentHTML('beforeend', renderComment(data.comment));
+
+                    // Update count
+                    const countBtn = document.querySelector(`button[onclick="toggleComments(${postId})"] .num-comments`);
+                    let count = parseInt(countBtn.textContent) || 0;
+                    countBtn.textContent = count + 1;
+                }
+            })
+            .finally(() => {
+                input.disabled = false;
+                input.focus();
+            });
+    }
+
+    function formatTime(isoString) {
+        const date = new Date(isoString);
+        const now = new Date();
+        const diff = (now - date) / 1000; // seconds
+
+        if (diff < 60) return 'Just now';
+        if (diff < 3600) return Math.floor(diff / 60) + 'm';
+        if (diff < 86400) return Math.floor(diff / 3600) + 'h';
+        return Math.floor(diff / 86400) + 'd';
+    }
+
+    function escapeHtml(unsafe) {
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+</script>
+<style>
+    .fill-current {
+        font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,355 @@
+{% extends "base_new.html" %}
+
+{% block title %}Friends - Encripy{% endblock %}
+
+{% block content %}
+<div class="container mx-auto max-w-6xl">
+  <header class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-bold font-heading text-gray-900 dark:text-white">Friends</h1>
+    <div class="flex gap-2">
+      <button onclick="document.getElementById('addFriendModal').classList.remove('hidden')"
+        class="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
+        <span class="material-symbols-outlined text-[20px]">person_add</span>
+        Add Friend
+      </button>
+    </div>
+  </header>
+
+  <!-- Stories Section -->
+  <div class="mb-8 overflow-x-auto pb-4 scrollbar-hide">
+    <div class="flex gap-4">
+      <!-- Add Story Card -->
+      <button onclick="document.getElementById('storyInput').click()"
+        class="flex-shrink-0 w-20 h-32 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700 flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 transition-all group cursor-pointer relative overflow-hidden">
+        {% if current_user.profile_picture %}
+        <img src="{{ url_for('static', filename='uploads/' + current_user.profile_picture) }}"
+          class="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity">
+        {% endif %}
+        <div
+          class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center z-10 shadow-lg group-hover:scale-110 transition-transform">
+          <span class="material-symbols-outlined text-sm">add</span>
+        </div>
+        <span class="text-xs font-medium text-gray-600 dark:text-gray-400 z-10">Add Story</span>
+      </button>
+
+      <!-- Active Stories -->
+      {% for story in active_stories %}
+      <div
+        onclick="openStoryModal('{{ story.id }}', '{{ url_for('static', filename='uploads/' + story.content_filename) }}', '{{ story.user.username }}', '{{ url_for('static', filename='uploads/' + story.user.profile_picture) if story.user.profile_picture else '' }}', '{{ story.caption or '' }}', '{{ story.created_at.strftime('%H:%M') }}', '{{ story.user.id }}')"
+        class="flex-shrink-0 w-20 h-32 rounded-2xl bg-gray-900 relative overflow-hidden cursor-pointer ring-2 ring-offset-2 ring-offset-background-light dark:ring-offset-background-dark ring-pink-500 transition-all hover:scale-105">
+        <img src="{{ url_for('static', filename='uploads/' + story.content_filename) }}"
+          class="w-full h-full object-cover">
+        <div class="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
+          <p class="text-xs text-white font-medium truncate">{{ story.user.username }}</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <form id="storyForm" action="{{ url_for('add_story') }}" method="POST" enctype="multipart/form-data" class="hidden">
+    <input type="file" name="story_image" id="storyInput" accept="image/*"
+      onchange="document.getElementById('storyForm').submit()">
+  </form>
+
+  <!-- Friend Requests -->
+  {% if pending_requests %}
+  <div class="mb-6">
+    <h2 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Friend Requests</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for req, user in pending_requests %}
+      <div
+        class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-orange-200 dark:border-orange-900/30">
+        <div class="flex items-center gap-3 mb-3">
+          {% if user.profile_picture %}
+          <img src="{{ url_for('static', filename='uploads/' + user.profile_picture) }}"
+            class="w-10 h-10 rounded-full object-cover">
+          {% else %}
+          <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
+            {{ user.username[:2] }}
+          </div>
+          {% endif %}
+          <div>
+            <p class="font-semibold text-gray-900 dark:text-white">{{ user.username }}</p>
+            <p class="text-xs text-gray-500">Wants to be friends</p>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="handleRequest('{{ req.id }}', 'accept')"
+            class="flex-1 bg-green-500 hover:bg-green-600 text-white text-xs font-bold py-2 rounded-lg transition-colors">Accept</button>
+          <button onclick="handleRequest('{{ req.id }}', 'reject')"
+            class="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-xs font-bold py-2 rounded-lg transition-colors">Reject</button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Friends List -->
+  <h2 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Your Friends</h2>
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for user in friends %}
+    <a href="{{ url_for('chat', username=user.username) }}"
+      class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm hover:shadow-md transition-all border border-transparent hover:border-primary/20 flex items-center gap-4 group">
+      <div class="relative">
+        {% if user.profile_picture %}
+        <img src="{{ url_for('static', filename='uploads/' + user.profile_picture) }}" alt="{{ user.username }}"
+          class="w-12 h-12 rounded-full object-cover">
+        {% else %}
+        <div
+          class="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-heading font-bold text-lg">
+          {{ user.username[:2] }}
+        </div>
+        {% endif %}
+        <div
+          class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full">
+        </div>
+      </div>
+
+      <div class="flex-1 min-w-0">
+        <h3 class="font-semibold text-gray-900 dark:text-white group-hover:text-primary transition-colors truncate">{{
+          user.username }}</h3>
+        <p class="text-sm text-gray-500 truncate">{{ user.bio or 'Encripy User' }}</p>
+      </div>
+
+      <div
+        class="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-gray-400 group-hover:bg-primary group-hover:text-white transition-all">
+        <span class="material-symbols-outlined text-[18px]">chat</span>
+      </div>
+    </a>
+    {% else %}
+    <div class="col-span-full text-center py-12">
+      <div
+        class="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
+        <span class="material-symbols-outlined text-3xl">sentiment_satisfied</span>
+      </div>
+      <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-1">No friends yet</h3>
+      <p class="text-gray-500 mb-4">Search for users to start chatting securely!</p>
+      <button onclick="document.getElementById('addFriendModal').classList.remove('hidden')"
+        class="text-primary font-medium hover:underline">Find Friends</button>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Add Friend Modal -->
+  <div id="addFriendModal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="this.parentElement.classList.add('hidden')">
+    </div>
+    <div
+      class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 border border-gray-200 dark:border-gray-800">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Add Friend</h3>
+        <button onclick="document.getElementById('addFriendModal').classList.add('hidden')"
+          class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="mb-4">
+        <div class="relative">
+          <span
+            class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[20px]">search</span>
+          <input type="text" id="userSearchInput" placeholder="Search by username..."
+            class="w-full pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-800 border-none rounded-xl focus:ring-2 focus:ring-primary text-gray-900 dark:text-white"
+            oninput="debounceSearch(this.value)">
+        </div>
+      </div>
+
+      <div id="searchResults" class="max-h-60 overflow-y-auto space-y-2">
+        <!-- Results injected here -->
+        <div class="text-center text-gray-500 py-4 text-sm">Type at least 3 characters to search...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Full-screen Story Viewer Modal -->
+<div id="storyViewer"
+  class="fixed inset-0 z-50 hidden bg-black/90 backdrop-blur-xl flex items-center justify-center p-4">
+  <button onclick="closeStory()" class="absolute top-4 right-4 text-white/50 hover:text-white transition-colors z-50">
+    <span class="material-symbols-outlined text-4xl">close</span>
+  </button>
+
+  <div class="relative w-full max-w-md bg-black rounded-xl overflow-hidden shadow-2xl h-[90vh] flex flex-col">
+    <!-- Progress Bar -->
+    <div class="absolute top-0 left-0 right-0 flex gap-1 p-2 z-20">
+      <div class="h-1 bg-white/30 flex-1 rounded-full overflow-hidden">
+        <div id="storyProgress" class="h-full bg-white w-0"></div>
+      </div>
+    </div>
+
+    <!-- User Info -->
+    <div class="absolute top-4 left-4 z-20 flex items-center gap-3">
+      <img id="storyUserPic" src="" class="w-10 h-10 rounded-full border-2 border-white/20">
+      <div>
+        <p id="storyUsername" class="text-white font-bold text-sm shadow-black drop-shadow-md"></p>
+        <p id="storyTime" class="text-white/70 text-xs shadow-black drop-shadow-md"></p>
+      </div>
+    </div>
+
+    <!-- Story Image -->
+    <img id="storyImage" src="" class="w-full h-full object-contain bg-black">
+
+    <!-- Caption -->
+    <div class="absolute bottom-20 left-0 right-0 p-4 text-center">
+      <p id="storyCaption" class="text-white text-lg font-medium shadow-black drop-shadow-lg"></p>
+    </div>
+
+    <!-- Reply Input -->
+    <div class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
+      <form id="reply-form" action="{{ url_for('reply_story') }}" method="POST" class="relative group">
+        <input type="hidden" name="story_id" id="storyIdInput">
+        <input type="text" name="message" placeholder="Send a reply..."
+          class="w-full bg-white/10 border border-white/20 rounded-full px-4 py-3 pr-12 text-white placeholder-white/50 focus:outline-none focus:bg-white/20 focus:border-white/40 transition-all backdrop-blur-md">
+        <button type="button"
+          class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:scale-110">
+          <span class="material-symbols-outlined text-sm">send</span>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function handleRequest(requestId, action) {
+    fetch(`/friends/handle/${requestId}/${action}`, { method: 'POST' })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success') {
+          location.reload();
+        } else {
+          alert(data.message);
+        }
+      });
+  }
+
+  let searchTimeout;
+  function debounceSearch(query) {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => searchUsers(query), 500);
+  }
+
+  function searchUsers(query) {
+    const resultsDiv = document.getElementById('searchResults');
+    if (query.length < 3) {
+      resultsDiv.innerHTML = '<div class="text-center text-gray-500 py-4 text-sm">Type at least 3 characters...</div>';
+      return;
+    }
+
+    resultsDiv.innerHTML = '<div class="text-center text-gray-500 py-4"><div class="animate-spin inline-block w-6 h-6 border-2 border-primary border-t-transparent rounded-full"></div></div>';
+
+    fetch(`/friends/search?q=${encodeURIComponent(query)}`)
+      .then(res => res.json())
+      .then(users => {
+        if (users.length === 0) {
+          resultsDiv.innerHTML = '<div class="text-center text-gray-500 py-4 text-sm">No users found.</div>';
+          return;
+        }
+
+        resultsDiv.innerHTML = users.map(user => `
+                    <div class="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl transition-colors">
+                        <div class="flex items-center gap-3">
+                            ${user.profile_picture ?
+            `<img src="/static/uploads/${user.profile_picture}" class="w-10 h-10 rounded-full object-cover">` :
+            `<div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">${user.username.substring(0, 2)}</div>`
+          }
+                            <span class="font-medium text-gray-900 dark:text-white">${user.username}</span>
+                        </div>
+                        <button onclick="addFriend(${user.id}, this)" class="bg-primary hover:bg-blue-600 text-white p-2 rounded-lg transition-colors">
+                            <span class="material-symbols-outlined text-[18px]">person_add</span>
+                        </button>
+                    </div>
+                `).join('');
+      });
+  }
+
+  function addFriend(userId, btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<div class="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>';
+
+    fetch(`/friends/add/${userId}`, { method: 'POST' })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success') {
+          btn.classList.replace('bg-primary', 'bg-green-500');
+          btn.innerHTML = '<span class="material-symbols-outlined text-[18px]">check</span>';
+        } else {
+          alert(data.message);
+          btn.disabled = false;
+          btn.innerHTML = '<span class="material-symbols-outlined text-[18px]">person_add</span>';
+        }
+      });
+  }
+
+  // Story Logic
+  let progressInterval;
+  const currentUserId = "{{ current_user.id }}";
+
+  function openStoryModal(id, image, username, userPic, caption, time, storyUserId) {
+    const modal = document.getElementById('storyViewer');
+    const img = document.getElementById('storyImage');
+    const userImg = document.getElementById('storyUserPic');
+    const userName = document.getElementById('storyUsername');
+    const timeEl = document.getElementById('storyTime');
+    const captionEl = document.getElementById('storyCaption');
+    const progress = document.getElementById('storyProgress');
+    const storyIdInput = document.getElementById('storyIdInput');
+    const replyForm = document.getElementById('reply-form');
+
+    img.src = image;
+
+    if (userPic) {
+      userImg.src = userPic;
+      userImg.style.display = 'block';
+    } else {
+      userImg.style.display = 'none';
+    }
+
+    userName.textContent = username;
+    timeEl.textContent = time;
+    captionEl.textContent = caption || '';
+    storyIdInput.value = id;
+
+    modal.classList.remove('hidden');
+
+    // Hide reply form for own stories
+    if (storyUserId == currentUserId) {
+      replyForm.classList.add('hidden');
+    } else {
+      replyForm.classList.remove('hidden');
+      // Auto-focus input
+      setTimeout(() => replyForm.querySelector('input[type="text"]').focus(), 100);
+    }
+
+    // Reset and start progress
+    progress.style.width = '0%';
+    progress.style.transition = 'none';
+
+    setTimeout(() => {
+      progress.style.transition = 'width 5s linear';
+      progress.style.width = '100%';
+    }, 50);
+
+    clearTimeout(progressInterval);
+    progressInterval = setTimeout(closeStory, 5000);
+  }
+
+  function closeStory() {
+    document.getElementById('storyViewer').classList.add('hidden');
+    clearTimeout(progressInterval);
+  }
+
+  // Allow reply form submission with Enter key
+  document.querySelector('#reply-form input').addEventListener('keypress', function (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      // Manually submit if needed or let default form action handle it
+      this.closest('form').submit();
+    }
+  });
+
+</script>
+{% endblock %}

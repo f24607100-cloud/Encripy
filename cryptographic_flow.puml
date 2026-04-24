@@ -1,0 +1,119 @@
+@startuml CoreCryptographicFlow
+
+!theme plain
+skinparam monochrome true
+skinparam shadowing false
+skinparam rectangle {
+  BorderColor #2c3e50
+  BackgroundColor #ecf0f1
+}
+skinparam note {
+  BackgroundColor #fffacd
+  BorderColor #ffd700
+}
+
+title Core Cryptographic Flow - Secure Chat System
+note right: Focus on Encryption & Key Exchange
+
+partition "Registration Phase" {
+  :User: --> (Input Registration Data)
+  (Input Registration Data) --> (Validate Password Requirements)
+  (Validate Password Requirements) --> (Generate bcrypt Hash)
+  note right: 12 rounds, automatic salt
+  (Generate bcrypt Hash) --> (Generate DH Key Pair)
+  note right: Private key: random [2, P-2]\nPublic key: G^private mod P
+  (Generate DH Key Pair) --> (Store User Record)
+  (Store User Record) --> (Registration Complete)
+}
+
+partition "Authentication Phase" {
+  :User: --> (Submit Login Credentials)
+  (Submit Login Credentials) --> (Check Rate Limit)
+  if (Rate Limited?) then (yes)
+    (Check Rate Limit) --> (Reject with Wait Time)
+  else (no)
+    (Check Rate Limit) --> (Hash Input Password)
+    (Hash Input Password) --> (Compare with Stored Hash)
+    if (Password Valid?) then (yes)
+      (Compare with Stored Hash) --> (Create Secure Session)
+      (Create Secure Session) --> (Access Granted)
+    else (no)
+      (Compare with Stored Hash) --> (Log Failed Attempt)
+      (Log Failed Attempt) --> (Reject Authentication)
+    endif
+  endif
+}
+
+partition "Key Exchange Phase" {
+  :User A: --> (Initiate Chat with User B)
+  (Initiate Chat with User B) --> (Fetch User B's Public Key)
+  (Fetch User B's Public Key) --> (Retrieve User A's Private Key)
+  (Retrieve User A's Private Key) --> (Compute Shared Secret)
+  note right: shared_secret = B_public^A_private mod P
+  (Compute Shared Secret) --> (Apply HKDF-SHA256)
+  note right: Derive 32-byte AES key
+  (Apply HKDF-SHA256) --> (Cache Shared Key)
+  (Cache Shared Key) --> (Key Exchange Complete)
+  
+  note right: User B computes same\nshared_secret independently\nusing A_public^B_private mod P
+}
+
+partition "Message Encryption Phase" {
+  :User: --> (Compose Message)
+  (Compose Message) --> (Get Shared Key)
+  (Get Shared Key) --> (Generate Random IV)
+  note right: 16 bytes, unique per message
+  (Generate Random IV) --> (Apply PKCS#7 Padding)
+  (Apply PKCS#7 Padding) --> (Encrypt with AES-256 CBC)
+  note right: Ciphertext = AES(key, IV, padded_plaintext)
+  (Encrypt with AES-256 CBC) --> (Compute HMAC-SHA256)
+  note right: HMAC = HMAC-SHA256(key, IV + ciphertext)
+  (Compute HMAC-SHA256) --> (Encode Components)
+  note right: Base64 encode ciphertext, IV, HMAC
+  (Encode Components) --> (Store in Database)
+  (Store in Database) --> (Encryption Complete)
+}
+
+partition "Message Decryption Phase" {
+  :System: --> (Fetch Stored Message)
+  (Fetch Stored Message) --> (Decode Base64 Components)
+  (Decode Base64 Components) --> (Verify HMAC)
+  if (HMAC Valid?) then (yes)
+    (Verify HMAC) --> (Decrypt with AES-256 CBC)
+    note right: Using shared key and stored IV
+    (Decrypt with AES-256 CBC) --> (Remove PKCS#7 Padding)
+    (Remove PKCS#7 Padding) --> (Recover Plaintext)
+    (Recover Plaintext) --> (Display Message)
+  else (no)
+    (Verify HMAC) --> (Reject as Tampered)
+    note right: Security breach detected
+    (Reject as Tampered) --> (Log Security Event)
+  endif
+}
+
+partition "Security Monitoring Phase" {
+  :System: --> (Monitor All Activities)
+  (Monitor All Activities) --> (Log Login Attempts)
+  note right: Success/failure, IP, timestamp
+  (Log Login Attempts) --> (Track Rate Limiting)
+  (Track Rate Limiting) --> (Monitor Brute Force Attempts)
+  (Monitor Brute Force Attempts) --> (Audit Encryption Operations)
+  (Audit Encryption Operations) --> (Generate Security Reports)
+  (Generate Security Reports) --> (Admin Dashboard Updates)
+}
+
+note bottom
+  **Key Security Principles Demonstrated:**
+  
+  🔐 **Confidentiality**: AES-256 CBC encryption ensures only intended recipients can read messages
+  🔐 **Integrity**: HMAC-SHA256 detects any message tampering
+  🔐 **Authentication**: bcrypt with salt ensures secure password storage
+  🔐 **Key Exchange**: Diffie-Hellman provides perfect forward secrecy
+  🔐 **Non-repudiation**: Audit trails track all security events
+  🔐 **Rate Limiting**: Prevents brute force attacks
+  🔐 **Session Security**: HttpOnly cookies prevent XSS attacks
+  
+  **Database Security**: No plaintext stored - only encrypted blobs
+end note
+
+@enduml
