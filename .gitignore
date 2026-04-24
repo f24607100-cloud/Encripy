@@ -20,3 +20,4 @@ spam_debug.log
 # Large local model artifact (exceeds GitHub file limit)
 sentiment_analysis/model.safetensors
 .vercel
+.env*.local

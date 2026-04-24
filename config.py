@@ -14,6 +14,8 @@ load_dotenv(ENV_PATH)
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-me")
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
+    if SQLALCHEMY_DATABASE_URI and SQLALCHEMY_DATABASE_URI.startswith("postgres://"):
+        SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URI.replace("postgres://", "postgresql://", 1)
     if not SQLALCHEMY_DATABASE_URI:
         # Vercel serverless file system is read-only except /tmp
         if IS_VERCEL:

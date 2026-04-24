@@ -12,6 +12,7 @@ pytest==8.3.4
 Pillow>=10.0.0
 pyotp
 qrcode
+psycopg2-binary
 scikit-learn
 openai
 torch
