@@ -8,8 +8,6 @@ import io
 import base64
 from datetime import datetime, timedelta
 from functools import wraps
-from sentiment_analysis.sentiment import predict_sentiment
-
 import pyotp
 import qrcode
 import otp
@@ -40,8 +38,29 @@ from crypto import encryption, hashing, key_exchange, utils
 from crypto.encryption import EncryptedPayload
 from database import db
 from database.models import BruteForceLog, LoginAttempt, Message, User, Story, Friendship, FeedPost, FeedLike, FeedComment
-from spam.spam import predict_spam
-from spam_image.spamimage import predict_spam_image
+
+try:
+    from sentiment_analysis.sentiment import predict_sentiment
+except Exception:
+    def predict_sentiment(text: str):
+        return {
+            "text": text,
+            "sentiment": "neutral",
+            "confidence": 0.0,
+            "probabilities": {"negative": 0.0, "neutral": 1.0, "positive": 0.0},
+        }
+
+try:
+    from spam.spam import predict_spam
+except Exception:
+    def predict_spam(text: str):
+        return 0
+
+try:
+    from spam_image.spamimage import predict_spam_image
+except Exception:
+    def predict_spam_image(image_path: str):
+        return 0
 
 
 def create_app(config_class: type[Config] = Config) -> Flask:
