@@ -6,16 +6,20 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent
 ENV_PATH = BASE_DIR / ".env"
+IS_VERCEL = os.getenv("VERCEL") == "1"
 
 load_dotenv(ENV_PATH)
 
 
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-me")
-    SQLALCHEMY_DATABASE_URI = os.getenv(
-        "DATABASE_URL",
-        f"sqlite:///{BASE_DIR / 'secure_chat.db'}",
-    )
+    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
+    if not SQLALCHEMY_DATABASE_URI:
+        # Vercel serverless file system is read-only except /tmp
+        if IS_VERCEL:
+            SQLALCHEMY_DATABASE_URI = "sqlite:////tmp/secure_chat.db"
+        else:
+            SQLALCHEMY_DATABASE_URI = f"sqlite:///{BASE_DIR / 'secure_chat.db'}"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
